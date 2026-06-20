@@ -20,10 +20,23 @@
             Live Tracking
         </label>
         <p id="status"></p>
-        <p id="loc-info"></p>    
+        <p id="loc-info"></p>  
+        
+        <form action="/map" method="get">
+            <input type="email" name="map-email" placeholder="Enter email to view map" required>
+            <button type="submit">Show Map</button><br><br>
+        </form>
+
+        {% if map_html %}
+            <div>
+                {{ map_html | safe }}
+            </div>
+        {% else %}
+            <p>No locations to show.</p>
+        {% endif %}
 
     {% else %}
-        <a href="/login">login</a>
+        <a href="/login">Login</a>
     {% endif %}
 
     <script>
