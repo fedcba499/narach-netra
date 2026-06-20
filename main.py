@@ -1,8 +1,12 @@
+import os
 import sqlite3
 import folium
 from flask import Flask, render_template,redirect,url_for, jsonify, request, session
 from authlib.integrations.flask_client import OAuth
 import config
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
 
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
@@ -45,7 +49,7 @@ def update_location():
     latitude = data.get('latitude')
     longitude = data.get('longitude')
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute('INSERT INTO locations (email, latitude, longitude) VALUES (?, ?, ?)', (email, latitude, longitude))
 
@@ -58,7 +62,7 @@ def update_location():
 def show_map():
     email = request.args.get("map-email") or session["user"]["email"]
     
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
         "SELECT latitude, longitude, timestamp FROM locations WHERE email = ? ORDER BY timestamp", (email,),
