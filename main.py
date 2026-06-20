@@ -1,4 +1,5 @@
-from flask import Flask, render_template,redirect,url_for, session
+import sqlite3
+from flask import Flask, render_template,redirect,url_for, jsonify, request, session
 from authlib.integrations.flask_client import OAuth
 import config
 
@@ -16,7 +17,7 @@ google = oauth.register(
 
 @app.route('/')
 def homepage():
-    user = session.get('user["email"]')
+    user = session.get('user')
     return render_template('index.html', user=user)
 
 @app.route('/login')
@@ -34,6 +35,23 @@ def auth():
 def logout():
     session.pop("user", None)
     return redirect("/")
+
+@app.route('/update_location', methods=['POST'])
+def update_location():
+    data = request.json
+
+    email = data.get('email')
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+
+    conn = sqlite3.connect('database.db')
+    cur = conn.cursor()
+    cur.execute('INSERT INTO locations (email, latitude, longitude) VALUES (?, ?, ?)', (email, latitude, longitude))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "success"}), 200
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,8 +1,77 @@
-{% if user %}
-<pre>
-    {{ user|tojson }}
-</pre>
-<a href="/logout">logout</a>
-{% else %}
-<a href="/login">login</a>
-{% endif %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narach Netra</title>
+    <link rel="icon" type="image/x-icon" href="/static/narach-netra.ico">
+</head>
+<body>
+
+    {% if user %}
+        <p>
+            {{ user["email"] }}
+            <a href="/logout">Logout</a>
+        </p>
+        
+
+        <label>
+            <input type="checkbox" id="trackingToggle" onchange="toggleTracking()">
+            Live Tracking
+        </label>
+        <p id="status"></p>
+        <p id="loc-info"></p>    
+
+    {% else %}
+        <a href="/login">login</a>
+    {% endif %}
+
+    <script>
+        let watchId = null;
+
+        function toggleTracking() {
+            let checkbox = document.getElementById("trackingToggle");
+            
+            if (checkbox.checked) {
+                watchId = navigator.geolocation.watchPosition(success, error, {
+                    enableHighAccuracy : true
+                });
+                document.getElementById("status").innerText = "Tracking On";
+            } else {
+                navigator.geolocation.clearWatch(watchId);
+                document.getElementById("status").innerText = "Tracking Off";
+            }
+        }
+
+        
+        function success(position) {
+            let lat = position.coords.latitude;
+            let lon = position.coords.longitude;
+
+            sendLocation(lat, lon);    
+            document.getElementById("loc-info").innerText = `${lat}, ${lon}`;        
+        }
+
+        function error() {
+            document.getElementById("loc-info").innerText = "Could not get your location";
+
+        }
+
+        function sendLocation(lat, lon) {
+            fetch("/update_location", {
+                method : "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email: "{{ user['email'] }}",
+                    latitude: lat,
+                    longitude: lon
+                })
+            });
+        }
+
+
+    </script>
+</body>
+</html>
