@@ -1,12 +1,14 @@
 import os
 import sqlite3
 import folium
-from flask import Flask, render_template,redirect,url_for, jsonify, request, session
+from flask import Flask, render_template,redirect,url_for, jsonify, request, session, flash
 from authlib.integrations.flask_client import OAuth
 import config
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.db")
+MAX_EMAILS = 10
+COLORS = ["blue", "red", "green", "purple", "orange", "darkred", "cadetblue", "darkgreen", "pink", "gray"]
 
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
@@ -58,32 +60,60 @@ def update_location():
 
     return jsonify({"status": "success"}), 200
 
+@app.route("/add-email")
+def add_email_to_session():
+    emails = session.setdefault("email_list", [session["user"]["email"]])
+    new_email = request.args.get("map-email")
+
+    if new_email:
+        # Check if the mail exists in the database
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM locations WHERE email = ? LIMIT 1", (new_email,))
+        email_exists = cur.fetchone()
+        conn.close()
+
+        if not email_exists:
+            flash(f"Email {new_email} not found. Please try another.", "error")
+            return redirect(url_for("show_map"))
+                
+        if new_email in emails:
+            emails.remove(new_email)
+        emails.insert(0, new_email)
+        session["email_list"] = emails[:MAX_EMAILS]
+
+    return redirect(url_for("show_map"))
+
+
 @app.route("/map")
 def show_map():
-    email = request.args.get("map-email") or session["user"]["email"]
+    emails = session.get("email_list") or session["user"]["email"]
     
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT latitude, longitude, timestamp FROM locations WHERE email = ? ORDER BY timestamp", (email,),
-    ).fetchall()
+    m = None
+
+    for email, color in zip(emails, COLORS):
+
+        points = [(row["latitude"], row["longitude"]) for row in conn.execute(
+            "SELECT latitude, longitude FROM locations WHERE email = ? ORDER BY timestamp", (email,)
+        )]
+        if not points:
+            continue
+        if m is None:
+            m = folium.Map(location=points[-1], zoom_start=15)
+
+        folium.PolyLine(points, color=color, tooltip=email).add_to(m)
+        folium.Marker(points[0], popup=f"{email} – Start", icon=folium.Icon(color=color)).add_to(m)
+        folium.Marker(points[-1], popup=f"{email} – Latest", icon=folium.Icon(color=color)).add_to(m)
+
     conn.close()
 
-    if not rows:
-        return f"No locations found for {email}"
+    if m is None:
+        return f"No locations found for {', '.join(emails)}"
     
-    points = [(row["latitude"], row["longitude"]) for row in rows]
+    return render_template("index.html", user=session.get("user"), emails = session.get("email_list"), map_html=m._repr_html_())
 
-    m = folium.Map(location=points[-1], zoom_start=15)
-
-    folium.PolyLine(points, color="blue", weight=3).add_to(m)
-
-    folium.Marker(points[0], popup="Start", icon=folium.Icon(color="green")).add_to(m)
-    folium.Marker(points[-1], popup="Latest", icon=folium.Icon(color="red")).add_to(m)
-
-    map_html = m._repr_html_()
-
-    return render_template("index.html", user=session.get("user"),  map_html=map_html)
 
 if __name__ == "__main__":
     app.run(debug=True)

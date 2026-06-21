@@ -41,12 +41,13 @@
                 <p id="status" class="text-muted small mb-1">Tracking off</p>
                 <p id="loc-info" class="font-monospace small text-secondary mb-3"></p>
 
-                <form action="/map" method="get" class="input-group mb-3">
+                <form action="/add-email" method="get" class="input-group mb-3">
                     <input type="email" name="map-email" class="form-control" placeholder="Enter email to view map" required>
                     <button type="submit" class="btn btn-primary">Show map</button>
                 </form>
 
                 {% if map_html %}
+                    <p class="text-muted text-center small mb-0">{{ emails }}</p>
                     <div class="border rounded overflow-hidden">
                         {{ map_html | safe }}
                     </div>
@@ -62,7 +63,8 @@
     </div>
 </div>
 
-<script>
+<script>    
+    const ACCURACY_THRESHOLD = 20; //Accuracy in meters
     let watchId = null;
 
     function toggleTracking() {
@@ -87,9 +89,14 @@
     function success(position) {
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
 
-        sendLocation(lat, lon);
-        document.getElementById("loc-info").textContent = `${lat}, ${lon}`;
+        if (accuracy <= ACCURACY_THRESHOLD) {
+            sendLocation(lat, lon);
+            document.getElementById("loc-info").textContent = `${lat}, ${lon}`;
+        } else {
+            document.getElementById("loc-info").textContent = `Waiting for ${ACCURACY_THRESHOLD}m accuracy data...Current accuracy: ${Math.round(accuracy)}m`;
+        } 
     }
 
     function error() {
@@ -110,5 +117,10 @@
         });
     }
 </script>
+
+{% for message in get_flashed_messages() %}
+  <script>alert("{{ message }}");</script>
+{% endfor %}
+
 </body>
 </html>
