@@ -64,7 +64,7 @@
 </div>
 
 <script>    
-    const ACCURACY_THRESHOLD = 20; //Accuracy in meters
+    const ACCURACY_THRESHOLD = 100; //Accuracy in meters
     let watchId = null;
 
     function toggleTracking() {
@@ -93,7 +93,7 @@
 
         if (accuracy <= ACCURACY_THRESHOLD) {
             sendLocation(lat, lon);
-            document.getElementById("loc-info").textContent = `${lat}, ${lon}`;
+            document.getElementById("loc-info").textContent = `${lat}, ${lon}, Accuracy: ${Math.round(accuracy)}m`;
         } else {
             document.getElementById("loc-info").textContent = `Waiting for ${ACCURACY_THRESHOLD}m accuracy data...Current accuracy: ${Math.round(accuracy)}m`;
         } 
